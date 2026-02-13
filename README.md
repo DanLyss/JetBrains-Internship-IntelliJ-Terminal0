@@ -1,0 +1,1 @@
+# -JetBrains-Internship-IntelliJ-Terminal
