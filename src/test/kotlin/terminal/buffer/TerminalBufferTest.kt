@@ -449,4 +449,56 @@ class TerminalBufferTest {
             assertEquals("", buf.getScreenLine(row).getText())
         }
     }
+
+    @Test
+    fun `clearScreen empties all lines and resets cursor`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.writeText("Hello")
+        buf.setCursorPosition(0, 1)
+        buf.writeText("World")
+
+        buf.clearScreen()
+
+        for (row in 0 until 3) {
+            assertEquals("", buf.getScreenLine(row).getText())
+        }
+        assertEquals(CursorPosition(0, 0), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `clearScreen does not affect scrollback`() {
+        val buf = TerminalBuffer(5, 2)
+        buf.writeText("AAAAABBBBB")
+        buf.writeText("CCCCC")
+
+        val scrollbackBefore = buf.getScrollbackSize()
+        buf.clearScreen()
+
+        assertEquals(scrollbackBefore, buf.getScrollbackSize())
+    }
+
+    @Test
+    fun `clearAll empties screen and scrollback`() {
+        val buf = TerminalBuffer(5, 2)
+        buf.writeText("AAAAABBBBB")
+        buf.writeText("CCCCC")
+
+        buf.clearAll()
+
+        for (row in 0 until 2) {
+            assertEquals("", buf.getScreenLine(row).getText())
+        }
+        assertEquals(0, buf.getScrollbackSize())
+        assertEquals(CursorPosition(0, 0), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `clearScreen on already empty screen`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.clearScreen()
+        for (row in 0 until 3) {
+            assertEquals("", buf.getScreenLine(row).getText())
+        }
+        assertEquals(CursorPosition(0, 0), buf.getCursorPosition())
+    }
 }

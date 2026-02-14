@@ -164,6 +164,19 @@ class TerminalBuffer(
         }
     }
 
+    fun clearScreen() {
+        for (row in 0 until height) {
+            screen[row] = TerminalLine(width)
+        }
+        cursorColumn = 0
+        cursorRow = 0
+    }
+
+    fun clearAll() {
+        clearScreen()
+        scrollback.clear()
+    }
+
     fun fillLine(row: Int, character: Char) {
         require(row in 0 until height) { "Row $row out of bounds [0, $height)" }
         screen[row].fill(character, currentAttributes)
