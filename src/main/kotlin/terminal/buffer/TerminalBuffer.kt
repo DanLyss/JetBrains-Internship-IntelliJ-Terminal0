@@ -69,6 +69,32 @@ class TerminalBuffer(
         return scrollback[row]
     }
 
+    fun writeText(text: String) {
+        for (char in text) {
+            if (char == '\n') {
+                cursorColumn = 0
+                if (cursorRow == height - 1) {
+                    scrollUp()
+                } else {
+                    cursorRow++
+                }
+                continue
+            }
+
+            if (cursorColumn >= width) {
+                cursorColumn = 0
+                if (cursorRow == height - 1) {
+                    scrollUp()
+                } else {
+                    cursorRow++
+                }
+            }
+
+            screen[cursorRow][cursorColumn] = Cell(char, currentAttributes)
+            cursorColumn++
+        }
+    }
+
     internal fun scrollUp() {
         val topLine = screen[0].copyOf()
         if (maxScrollbackSize > 0) {

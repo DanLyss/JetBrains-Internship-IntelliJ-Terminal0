@@ -200,4 +200,99 @@ class TerminalBufferTest {
         assertEquals(0, buf.getScrollbackSize())
         assertEquals("", buf.getScreenLine(0).getText())
     }
+
+    @Test
+    fun `writeText places characters at cursor`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("Hello")
+        assertEquals("Hello", buf.getScreenLine(0).getText())
+        assertEquals(CursorPosition(5, 0), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `writeText uses current attributes`() {
+        val buf = TerminalBuffer(10, 3)
+        val attrs = TextAttributes.of(Color.RED, Color.BLACK, setOf(Style.BOLD))
+        buf.setAttributes(attrs)
+        buf.writeText("AB")
+
+        assertEquals(attrs, buf.getScreenLine(0)[0].attributes)
+        assertEquals(attrs, buf.getScreenLine(0)[1].attributes)
+    }
+
+    @Test
+    fun `writeText wraps to next line at edge`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.writeText("HelloWorld")
+        assertEquals("Hello", buf.getScreenLine(0).getText())
+        assertEquals("World", buf.getScreenLine(1).getText())
+        assertEquals(CursorPosition(5, 1), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `writeText handles newline character`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("Hi\nBye")
+        assertEquals("Hi", buf.getScreenLine(0).getText())
+        assertEquals("Bye", buf.getScreenLine(1).getText())
+        assertEquals(CursorPosition(3, 1), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `writeText scrolls when reaching bottom`() {
+        val buf = TerminalBuffer(5, 2)
+        buf.writeText("AAAAA")
+        buf.writeText("BBBBB")
+        buf.writeText("CCCCC")
+
+        assertEquals(1, buf.getScrollbackSize())
+        assertEquals("AAAAA", buf.getScrollbackLine(0).getText())
+        assertEquals("BBBBB", buf.getScreenLine(0).getText())
+        assertEquals("CCCCC", buf.getScreenLine(1).getText())
+    }
+
+    @Test
+    fun `writeText scrolls on newline at bottom`() {
+        val buf = TerminalBuffer(10, 2)
+        buf.writeText("Line1\nLine2\nLine3")
+
+        assertEquals(1, buf.getScrollbackSize())
+        assertEquals("Line1", buf.getScrollbackLine(0).getText())
+        assertEquals("Line2", buf.getScreenLine(0).getText())
+        assertEquals("Line3", buf.getScreenLine(1).getText())
+    }
+
+    @Test
+    fun `writeText overwrites existing content`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("XXXXXXXXXX")
+        buf.setCursorPosition(0, 0)
+        buf.writeText("Hello")
+        assertEquals("HelloXXXXX", buf.getScreenLine(0).getText())
+    }
+
+    @Test
+    fun `writeText from middle of line`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.setCursorPosition(3, 0)
+        buf.writeText("Hi")
+        assertEquals("Hi", buf.getScreenLine(0).getText().trim())
+        assertEquals(CursorPosition(5, 0), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `writeText empty string does nothing`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("")
+        assertEquals(CursorPosition(0, 0), buf.getCursorPosition())
+        assertEquals("", buf.getScreenLine(0).getText())
+    }
+
+    @Test
+    fun `writeText scrollback respects max size during long write`() {
+        val buf = TerminalBuffer(3, 2, maxScrollbackSize = 2)
+        buf.writeText("AAABBBCCCDDDEEEFFF")
+
+        assertEquals(2, buf.getScrollbackSize())
+    }
 }
