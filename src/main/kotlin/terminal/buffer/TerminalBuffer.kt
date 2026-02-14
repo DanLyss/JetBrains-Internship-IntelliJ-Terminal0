@@ -95,6 +95,75 @@ class TerminalBuffer(
         }
     }
 
+    fun insertText(text: String) {
+        var index = 0
+        while (index < text.length) {
+            if (text[index] == '\n') {
+                cursorColumn = 0
+                if (cursorRow == height - 1) {
+                    scrollUp()
+                } else {
+                    cursorRow++
+                }
+                index++
+                continue
+            }
+
+            if (cursorColumn >= width) {
+                cursorColumn = 0
+                if (cursorRow == height - 1) {
+                    scrollUp()
+                } else {
+                    cursorRow++
+                }
+            }
+
+            val nextNewline = text.indexOf('\n', index)
+            val charsUntilNewline = if (nextNewline == -1) text.length - index else nextNewline - index
+            val spaceOnLine = width - cursorColumn
+            val batchSize = minOf(charsUntilNewline, spaceOnLine)
+
+            shiftRightBy(cursorRow, cursorColumn, batchSize)
+
+            for (i in 0 until batchSize) {
+                screen[cursorRow][cursorColumn] = Cell(text[index], currentAttributes)
+                cursorColumn++
+                index++
+            }
+        }
+    }
+
+    private fun shiftRightBy(startRow: Int, fromColumn: Int, count: Int) {
+        if (count <= 0) return
+
+        var previousOverflow: Array<Cell>? = null
+        var row = startRow
+        var shiftFrom = fromColumn
+
+        while (row < height) {
+            val currentOverflow = Array(count) { screen[row][width - count + it] }
+
+            for (col in width - count - 1 downTo shiftFrom) {
+                screen[row][col + count] = screen[row][col]
+            }
+            for (col in shiftFrom until minOf(shiftFrom + count, width)) {
+                screen[row][col] = Cell.EMPTY
+            }
+
+            if (previousOverflow != null) {
+                for (i in previousOverflow.indices) {
+                    screen[row][i] = previousOverflow[i]
+                }
+            }
+
+            if (currentOverflow.all { it == Cell.EMPTY }) break
+
+            previousOverflow = currentOverflow
+            row++
+            shiftFrom = 0
+        }
+    }
+
     internal fun scrollUp() {
         val topLine = screen[0].copyOf()
         if (maxScrollbackSize > 0) {

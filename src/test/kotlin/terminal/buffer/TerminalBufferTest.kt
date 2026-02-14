@@ -295,4 +295,67 @@ class TerminalBufferTest {
 
         assertEquals(2, buf.getScrollbackSize())
     }
+
+    @Test
+    fun `insertText shifts existing content right`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("World")
+        buf.setCursorPosition(0, 0)
+        buf.insertText("Hello")
+        assertEquals("HelloWorld", buf.getScreenLine(0).getText())
+    }
+
+    @Test
+    fun `insertText uses current attributes`() {
+        val buf = TerminalBuffer(10, 3)
+        val attrs = TextAttributes.of(Color.GREEN, Color.DEFAULT, emptySet())
+        buf.setAttributes(attrs)
+        buf.insertText("AB")
+        assertEquals(attrs, buf.getScreenLine(0)[0].attributes)
+        assertEquals(attrs, buf.getScreenLine(0)[1].attributes)
+    }
+
+    @Test
+    fun `insertText overflow wraps to next line`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.writeText("ABCDE")
+        buf.setCursorPosition(0, 0)
+        buf.insertText("X")
+        assertEquals("XABCD", buf.getScreenLine(0).getText())
+        assertEquals("E", buf.getScreenLine(1).getText())
+    }
+
+    @Test
+    fun `insertText into empty line`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.insertText("Hello")
+        assertEquals("Hello", buf.getScreenLine(0).getText())
+        assertEquals(CursorPosition(5, 0), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `insertText in middle of line`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("AE")
+        buf.setCursorPosition(1, 0)
+        buf.insertText("BCD")
+        assertEquals("ABCDE", buf.getScreenLine(0).getText())
+    }
+
+    @Test
+    fun `insertText handles newline`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.insertText("Hi\nBye")
+        assertEquals("Hi", buf.getScreenLine(0).getText())
+        assertEquals("Bye", buf.getScreenLine(1).getText())
+    }
+
+    @Test
+    fun `insertText empty string does nothing`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("Hello")
+        buf.setCursorPosition(2, 0)
+        buf.insertText("")
+        assertEquals("Hello", buf.getScreenLine(0).getText())
+    }
 }
