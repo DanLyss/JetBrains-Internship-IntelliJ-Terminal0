@@ -4,3 +4,4 @@ build/
 *.iml
 out/
 .kotlin/
+kls_database.db
