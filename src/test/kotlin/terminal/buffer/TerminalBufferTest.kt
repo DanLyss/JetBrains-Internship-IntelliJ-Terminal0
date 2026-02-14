@@ -358,4 +358,95 @@ class TerminalBufferTest {
         buf.insertText("")
         assertEquals("Hello", buf.getScreenLine(0).getText())
     }
+
+    @Test
+    fun `fillLine fills with character and current attributes`() {
+        val buf = TerminalBuffer(5, 3)
+        val attrs = TextAttributes.of(Color.RED, Color.BLACK, setOf(Style.BOLD))
+        buf.setAttributes(attrs)
+        buf.fillLine(0, '#')
+
+        assertEquals("#####", buf.getScreenLine(0).getText())
+        assertEquals(attrs, buf.getScreenLine(0)[0].attributes)
+        assertEquals(attrs, buf.getScreenLine(0)[4].attributes)
+    }
+
+    @Test
+    fun `fillLine does not affect other lines`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.fillLine(1, 'X')
+        assertEquals("", buf.getScreenLine(0).getText())
+        assertEquals("XXXXX", buf.getScreenLine(1).getText())
+        assertEquals("", buf.getScreenLine(2).getText())
+    }
+
+    @Test
+    fun `fillLine with invalid row throws`() {
+        val buf = TerminalBuffer(5, 3)
+        assertFailsWith<IllegalArgumentException> { buf.fillLine(-1, 'X') }
+        assertFailsWith<IllegalArgumentException> { buf.fillLine(3, 'X') }
+    }
+
+    @Test
+    fun `clearLine resets line to empty`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.writeText("Hello")
+        buf.clearLine(0)
+        assertEquals("", buf.getScreenLine(0).getText())
+        for (col in 0 until 5) {
+            assertEquals(Cell.EMPTY, buf.getScreenLine(0)[col])
+        }
+    }
+
+    @Test
+    fun `clearLine with invalid row throws`() {
+        val buf = TerminalBuffer(5, 3)
+        assertFailsWith<IllegalArgumentException> { buf.clearLine(-1) }
+        assertFailsWith<IllegalArgumentException> { buf.clearLine(3) }
+    }
+
+    @Test
+    fun `insertNewLine scrolls screen up`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.writeText("AAAAA")
+        buf.setCursorPosition(0, 1)
+        buf.writeText("BBBBB")
+        buf.setCursorPosition(0, 2)
+        buf.writeText("CCCCC")
+
+        buf.insertNewLine()
+
+        assertEquals(1, buf.getScrollbackSize())
+        assertEquals("AAAAA", buf.getScrollbackLine(0).getText())
+        assertEquals("BBBBB", buf.getScreenLine(0).getText())
+        assertEquals("CCCCC", buf.getScreenLine(1).getText())
+        assertEquals("", buf.getScreenLine(2).getText())
+    }
+
+    @Test
+    fun `insertNewLine respects max scrollback`() {
+        val buf = TerminalBuffer(5, 2, maxScrollbackSize = 1)
+        buf.writeText("AAAAA")
+        buf.setCursorPosition(0, 1)
+        buf.writeText("BBBBB")
+
+        buf.insertNewLine()
+        buf.clearLine(0)
+        buf.getScreenLine(0)[0] = Cell('C', TextAttributes.DEFAULT)
+        buf.insertNewLine()
+
+        assertEquals(1, buf.getScrollbackSize())
+        assertEquals("C", buf.getScrollbackLine(0).getText())
+    }
+
+    @Test
+    fun `insertNewLine on empty screen`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.insertNewLine()
+        assertEquals(1, buf.getScrollbackSize())
+        assertEquals("", buf.getScrollbackLine(0).getText())
+        for (row in 0 until 3) {
+            assertEquals("", buf.getScreenLine(row).getText())
+        }
+    }
 }

@@ -164,6 +164,20 @@ class TerminalBuffer(
         }
     }
 
+    fun fillLine(row: Int, character: Char) {
+        require(row in 0 until height) { "Row $row out of bounds [0, $height)" }
+        screen[row].fill(character, currentAttributes)
+    }
+
+    fun clearLine(row: Int) {
+        require(row in 0 until height) { "Row $row out of bounds [0, $height)" }
+        screen[row].clear()
+    }
+
+    fun insertNewLine() {
+        scrollUp()
+    }
+
     internal fun scrollUp() {
         val topLine = screen[0].copyOf()
         if (maxScrollbackSize > 0) {
