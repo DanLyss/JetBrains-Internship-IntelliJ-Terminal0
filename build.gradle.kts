@@ -15,6 +15,11 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+    outputs.upToDateWhen { false }
 }
 
 kotlin {
