@@ -1,6 +1,7 @@
 package terminal.buffer
 
 import terminal.model.Cell
+import terminal.model.CharWidth
 import terminal.model.Color
 import terminal.model.Style
 import terminal.model.TerminalLine
@@ -125,7 +126,19 @@ class TerminalBuffer(
                 continue
             }
 
-            if (cursorColumn >= width) {
+            val charWidth = CharWidth.of(char)
+
+            if (charWidth == 2 && cursorColumn >= width - 1) {
+                if (cursorColumn == width - 1) {
+                    screen[cursorRow][cursorColumn] = Cell.EMPTY
+                }
+                cursorColumn = 0
+                if (cursorRow == height - 1) {
+                    scrollUp()
+                } else {
+                    cursorRow++
+                }
+            } else if (cursorColumn >= width) {
                 cursorColumn = 0
                 if (cursorRow == height - 1) {
                     scrollUp()
@@ -134,11 +147,34 @@ class TerminalBuffer(
                 }
             }
 
-            screen[cursorRow][cursorColumn] = Cell(char, currentAttributes)
-            cursorColumn++
+            clearWideCharAt(cursorRow, cursorColumn)
+            if (charWidth == 2 && cursorColumn + 1 < width) {
+                clearWideCharAt(cursorRow, cursorColumn + 1)
+            }
+
+            if (charWidth == 2) {
+                screen[cursorRow][cursorColumn] = Cell.wide(char, currentAttributes)
+                screen[cursorRow][cursorColumn + 1] = Cell.placeholder(currentAttributes)
+                cursorColumn += 2
+            } else {
+                screen[cursorRow][cursorColumn] = Cell(char, currentAttributes)
+                cursorColumn++
+            }
         }
     }
 
+    private fun clearWideCharAt(row: Int, column: Int) {
+        val cell = screen[row][column]
+        if (cell.isWide && column + 1 < width) {
+            screen[row][column] = Cell.EMPTY
+            screen[row][column + 1] = Cell.EMPTY
+        } else if (cell.isPlaceholder && column - 1 >= 0 && screen[row][column - 1].isWide) {
+            screen[row][column - 1] = Cell.EMPTY
+            screen[row][column] = Cell.EMPTY
+        }
+    }
+
+    // TODO: wide character support is not yet implemented for insertText
     fun insertText(text: String) {
         var index = 0
         while (index < text.length) {

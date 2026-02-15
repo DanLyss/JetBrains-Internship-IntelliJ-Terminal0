@@ -30,7 +30,9 @@ class TerminalLine(val width: Int) {
     fun getText(): String {
         val builder = StringBuilder(width)
         for (cell in cells) {
-            builder.append(cell.character)
+            if (!cell.isPlaceholder) {
+                builder.append(cell.character)
+            }
         }
         return builder.toString().trimEnd()
     }

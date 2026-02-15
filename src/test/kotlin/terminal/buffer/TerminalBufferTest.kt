@@ -7,6 +7,7 @@ import terminal.model.TextAttributes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class TerminalBufferTest {
 
@@ -596,5 +597,76 @@ class TerminalBufferTest {
         buf.writeText("Hello")
 
         assertEquals("Hello\n", buf.getAllText())
+    }
+
+    @Test
+    fun `writeText wide character occupies two cells`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("A中B")
+
+        assertEquals('A', buf.getChar(0, 0))
+        assertEquals('中', buf.getChar(1, 0))
+        assertTrue(buf.getScreenLine(0)[1].isWide)
+        assertTrue(buf.getScreenLine(0)[2].isPlaceholder)
+        assertEquals('B', buf.getChar(3, 0))
+        assertEquals(CursorPosition(4, 0), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `writeText wide character getText skips placeholders`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("中日本")
+        assertEquals("中日本", buf.getLineText(0))
+    }
+
+    @Test
+    fun `writeText wide character wraps when at last column`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.writeText("ABCD中")
+
+        assertEquals("ABCD", buf.getLineText(0))
+        assertEquals("中", buf.getLineText(1))
+    }
+
+    @Test
+    fun `writeText overwriting half of wide character clears both cells`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("中")
+        buf.setCursorPosition(1, 0)
+        buf.writeText("X")
+
+        assertEquals(' ', buf.getChar(0, 0))
+        assertEquals('X', buf.getChar(1, 0))
+    }
+
+    @Test
+    fun `writeText overwriting first cell of wide character clears placeholder`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("中")
+        buf.setCursorPosition(0, 0)
+        buf.writeText("A")
+
+        assertEquals('A', buf.getChar(0, 0))
+        assertEquals(' ', buf.getChar(1, 0))
+    }
+
+    @Test
+    fun `writeText multiple wide characters fill line`() {
+        val buf = TerminalBuffer(6, 3)
+        buf.writeText("中日本")
+
+        assertEquals("中日本", buf.getLineText(0))
+        assertEquals(CursorPosition(6, 0), buf.getCursorPosition())
+    }
+
+    @Test
+    fun `writeText wide character with attributes`() {
+        val buf = TerminalBuffer(10, 3)
+        val attrs = TextAttributes.of(Color.RED, Color.DEFAULT, emptySet())
+        buf.setAttributes(attrs)
+        buf.writeText("中")
+
+        assertEquals(attrs, buf.getAttributes(0, 0))
+        assertEquals(attrs, buf.getAttributes(1, 0))
     }
 }
