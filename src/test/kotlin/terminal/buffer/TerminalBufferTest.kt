@@ -501,4 +501,100 @@ class TerminalBufferTest {
         }
         assertEquals(CursorPosition(0, 0), buf.getCursorPosition())
     }
+
+    @Test
+    fun `getChar returns character at position`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("Hello")
+        assertEquals('H', buf.getChar(0, 0))
+        assertEquals('o', buf.getChar(4, 0))
+        assertEquals(' ', buf.getChar(5, 0))
+    }
+
+    @Test
+    fun `getChar with invalid position throws`() {
+        val buf = TerminalBuffer(10, 3)
+        assertFailsWith<IllegalArgumentException> { buf.getChar(-1, 0) }
+        assertFailsWith<IllegalArgumentException> { buf.getChar(10, 0) }
+        assertFailsWith<IllegalArgumentException> { buf.getChar(0, -1) }
+        assertFailsWith<IllegalArgumentException> { buf.getChar(0, 3) }
+    }
+
+    @Test
+    fun `getAttributes returns attributes at position`() {
+        val buf = TerminalBuffer(10, 3)
+        val attrs = TextAttributes.of(Color.RED, Color.BLACK, setOf(Style.BOLD))
+        buf.setAttributes(attrs)
+        buf.writeText("Hi")
+
+        assertEquals(attrs, buf.getAttributes(0, 0))
+        assertEquals(attrs, buf.getAttributes(1, 0))
+        assertEquals(TextAttributes.DEFAULT, buf.getAttributes(2, 0))
+    }
+
+    @Test
+    fun `getScrollbackChar and getScrollbackAttributes`() {
+        val buf = TerminalBuffer(5, 2)
+        val attrs = TextAttributes.of(Color.GREEN, Color.DEFAULT, emptySet())
+        buf.setAttributes(attrs)
+        buf.writeText("AAAAA")
+        buf.setAttributes(TextAttributes.DEFAULT)
+        buf.writeText("BBBBB")
+        buf.writeText("CCCCC")
+
+        assertEquals('A', buf.getScrollbackChar(0, 0))
+        assertEquals(attrs, buf.getScrollbackAttributes(0, 0))
+    }
+
+    @Test
+    fun `getLineText returns trimmed line content`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("Hello")
+        assertEquals("Hello", buf.getLineText(0))
+        assertEquals("", buf.getLineText(1))
+    }
+
+    @Test
+    fun `getScrollbackLineText returns scrollback line`() {
+        val buf = TerminalBuffer(5, 2)
+        buf.writeText("FIRST")
+        buf.writeText("SECND")
+        buf.writeText("THIRD")
+
+        assertEquals("FIRST", buf.getScrollbackLineText(0))
+    }
+
+    @Test
+    fun `getScreenText returns all screen lines joined`() {
+        val buf = TerminalBuffer(5, 3)
+        buf.writeText("Hello")
+        buf.setCursorPosition(0, 1)
+        buf.writeText("World")
+
+        assertEquals("Hello\nWorld\n", buf.getScreenText())
+    }
+
+    @Test
+    fun `getScreenText on empty buffer`() {
+        val buf = TerminalBuffer(5, 3)
+        assertEquals("\n\n", buf.getScreenText())
+    }
+
+    @Test
+    fun `getAllText returns scrollback and screen`() {
+        val buf = TerminalBuffer(5, 2)
+        buf.writeText("AAAAA")
+        buf.writeText("BBBBB")
+        buf.writeText("CCCCC")
+
+        assertEquals("AAAAA\nBBBBB\nCCCCC", buf.getAllText())
+    }
+
+    @Test
+    fun `getAllText with empty scrollback`() {
+        val buf = TerminalBuffer(5, 2)
+        buf.writeText("Hello")
+
+        assertEquals("Hello\n", buf.getAllText())
+    }
 }

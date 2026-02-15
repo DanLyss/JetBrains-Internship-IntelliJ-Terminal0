@@ -69,6 +69,50 @@ class TerminalBuffer(
         return scrollback[row]
     }
 
+    fun getChar(column: Int, row: Int): Char {
+        require(column in 0 until width) { "Column $column out of bounds [0, $width)" }
+        require(row in 0 until height) { "Row $row out of bounds [0, $height)" }
+        return screen[row][column].character
+    }
+
+    fun getAttributes(column: Int, row: Int): TextAttributes {
+        require(column in 0 until width) { "Column $column out of bounds [0, $width)" }
+        require(row in 0 until height) { "Row $row out of bounds [0, $height)" }
+        return screen[row][column].attributes
+    }
+
+    fun getScrollbackChar(column: Int, row: Int): Char {
+        require(column in 0 until width) { "Column $column out of bounds [0, $width)" }
+        require(row in 0 until scrollback.size) { "Scrollback row $row out of bounds [0, ${scrollback.size})" }
+        return scrollback[row][column].character
+    }
+
+    fun getScrollbackAttributes(column: Int, row: Int): TextAttributes {
+        require(column in 0 until width) { "Column $column out of bounds [0, $width)" }
+        require(row in 0 until scrollback.size) { "Scrollback row $row out of bounds [0, ${scrollback.size})" }
+        return scrollback[row][column].attributes
+    }
+
+    fun getLineText(row: Int): String {
+        require(row in 0 until height) { "Row $row out of bounds [0, $height)" }
+        return screen[row].getText()
+    }
+
+    fun getScrollbackLineText(row: Int): String {
+        require(row in 0 until scrollback.size) { "Scrollback row $row out of bounds [0, ${scrollback.size})" }
+        return scrollback[row].getText()
+    }
+
+    fun getScreenText(): String {
+        return (0 until height).joinToString("\n") { screen[it].getText() }
+    }
+
+    fun getAllText(): String {
+        val scrollbackText = (0 until scrollback.size).joinToString("\n") { scrollback[it].getText() }
+        val screenText = getScreenText()
+        return if (scrollback.isEmpty()) screenText else "$scrollbackText\n$screenText"
+    }
+
     fun writeText(text: String) {
         for (char in text) {
             if (char == '\n') {
