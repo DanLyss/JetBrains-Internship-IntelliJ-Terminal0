@@ -669,4 +669,112 @@ class TerminalBufferTest {
         assertEquals(attrs, buf.getAttributes(0, 0))
         assertEquals(attrs, buf.getAttributes(1, 0))
     }
+
+    @Test
+    fun `buffer 1x1 write and scroll`() {
+        val buf = TerminalBuffer(1, 1)
+        buf.writeText("A")
+        assertEquals("A", buf.getLineText(0))
+        buf.writeText("B")
+        assertEquals("B", buf.getLineText(0))
+        assertEquals(1, buf.getScrollbackSize())
+        assertEquals("A", buf.getScrollbackLineText(0))
+    }
+
+    @Test
+    fun `zero scrollback discards all`() {
+        val buf = TerminalBuffer(5, 2, maxScrollbackSize = 0)
+        buf.writeText("AAAAA")
+        buf.writeText("BBBBB")
+        buf.writeText("CCCCC")
+
+        assertEquals(0, buf.getScrollbackSize())
+        assertEquals("BBBBB", buf.getLineText(0))
+        assertEquals("CCCCC", buf.getLineText(1))
+    }
+
+    @Test
+    fun `write empty string preserves state`() {
+        val buf = TerminalBuffer(5, 2)
+        buf.writeText("Hi")
+        val pos = buf.getCursorPosition()
+        buf.writeText("")
+        assertEquals(pos, buf.getCursorPosition())
+        assertEquals("Hi", buf.getLineText(0))
+    }
+
+    @Test
+    fun `long text causes multiple scrolls`() {
+        val buf = TerminalBuffer(3, 2, maxScrollbackSize = 100)
+        buf.writeText("ABCDEFGHIJKL")
+
+        assertEquals("GHI", buf.getLineText(0))
+        assertEquals("JKL", buf.getLineText(1))
+        assertEquals(2, buf.getScrollbackSize())
+        assertEquals("ABC", buf.getScrollbackLineText(0))
+        assertEquals("DEF", buf.getScrollbackLineText(1))
+    }
+
+    @Test
+    fun `all styles combined`() {
+        val buf = TerminalBuffer(10, 3)
+        val attrs = TextAttributes.Builder()
+            .foreground(Color.BRIGHT_RED)
+            .background(Color.BLUE)
+            .bold()
+            .italic()
+            .underline()
+            .build()
+        buf.setAttributes(attrs)
+        buf.writeText("X")
+
+        val result = buf.getAttributes(0, 0)
+        assertEquals(Color.BRIGHT_RED, result.foreground)
+        assertEquals(Color.BLUE, result.background)
+        assertEquals(setOf(Style.BOLD, Style.ITALIC, Style.UNDERLINE), result.styles)
+    }
+
+    @Test
+    fun `sequential operations write insert clear write`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("Hello")
+        buf.setCursorPosition(5, 0)
+        buf.insertText(" World")
+        assertEquals("Hello Worl", buf.getLineText(0))
+
+        buf.clearLine(0)
+        assertEquals("", buf.getLineText(0))
+
+        buf.setCursorPosition(0, 0)
+        buf.writeText("New")
+        assertEquals("New", buf.getLineText(0))
+    }
+
+    @Test
+    fun `scrollback full then oldest removed`() {
+        val buf = TerminalBuffer(3, 1, maxScrollbackSize = 3)
+        buf.writeText("AAA")
+        buf.writeText("BBB")
+        buf.writeText("CCC")
+        buf.writeText("DDD")
+        buf.writeText("EEE")
+
+        assertEquals(3, buf.getScrollbackSize())
+        assertEquals("BBB", buf.getScrollbackLineText(0))
+        assertEquals("CCC", buf.getScrollbackLineText(1))
+        assertEquals("DDD", buf.getScrollbackLineText(2))
+    }
+
+    @Test
+    fun `cursor movement does not affect content`() {
+        val buf = TerminalBuffer(10, 3)
+        buf.writeText("Hello")
+        buf.moveCursorUp(5)
+        buf.moveCursorLeft(100)
+        buf.moveCursorDown(1)
+        buf.moveCursorRight(3)
+
+        assertEquals("Hello", buf.getLineText(0))
+        assertEquals(CursorPosition(3, 1), buf.getCursorPosition())
+    }
 }
