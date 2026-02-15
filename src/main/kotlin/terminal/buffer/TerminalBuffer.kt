@@ -6,10 +6,11 @@ import terminal.model.Color
 import terminal.model.Style
 import terminal.model.TerminalLine
 import terminal.model.TextAttributes
+import terminal.resize.ResizeStrategy
 
 class TerminalBuffer(
-    val width: Int,
-    val height: Int,
+    width: Int,
+    height: Int,
     val maxScrollbackSize: Int = 1000
 ) {
     init {
@@ -18,7 +19,12 @@ class TerminalBuffer(
         require(maxScrollbackSize >= 0) { "Max scrollback size must be non-negative" }
     }
 
-    private val screen: Array<TerminalLine> = Array(height) { TerminalLine(width) }
+    var width: Int = width
+        private set
+    var height: Int = height
+        private set
+
+    private var screen: Array<TerminalLine> = Array(height) { TerminalLine(width) }
     private val scrollback: ArrayDeque<TerminalLine> = ArrayDeque()
 
     private var cursorColumn: Int = 0
@@ -269,6 +275,29 @@ class TerminalBuffer(
 
     fun insertNewLine() {
         scrollUp()
+    }
+
+    fun resize(newWidth: Int, newHeight: Int, strategy: ResizeStrategy) {
+        require(newWidth > 0) { "Width must be positive" }
+        require(newHeight > 0) { "Height must be positive" }
+
+        val result = strategy.resize(screen, scrollback.toList(), newWidth, newHeight)
+
+        screen = result.screen
+        scrollback.clear()
+        val trimmedScrollback = if (result.scrollback.size > maxScrollbackSize) {
+            result.scrollback.drop(result.scrollback.size - maxScrollbackSize)
+        } else {
+            result.scrollback
+        }
+        for (line in trimmedScrollback) {
+            scrollback.addLast(line)
+        }
+
+        width = newWidth
+        height = newHeight
+        cursorColumn = cursorColumn.coerceIn(0, newWidth - 1)
+        cursorRow = cursorRow.coerceIn(0, newHeight - 1)
     }
 
     internal fun scrollUp() {
